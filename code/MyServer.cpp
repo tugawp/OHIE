@@ -26,7 +26,7 @@ SOFTWARE.
 #include <fstream>
 #include <string>
 #include <list>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/asio.hpp>
@@ -419,9 +419,9 @@ void tcp_server::run_network()
     for( int i=0; i<peers.size(); i++){
         if( !peers[i].connected /* || peers[i].session == NULL */){
 
-  //          peers[i].session = make_shared<tcp_connection>(acceptor_.get_io_service());
+  //          peers[i].session = make_shared<tcp_connection>((boost::asio::io_service &) acceptor_.get_executor().context());
           try{
-            peers[i].session = tcp_connection::create(acceptor_.get_io_service());
+            peers[i].session = tcp_connection::create((boost::asio::io_service &) acceptor_.get_executor().context());
           }
           catch(...){
             cout << "Creating session threw... nothing major..."<<endl;
@@ -432,7 +432,7 @@ void tcp_server::run_network()
 
           if ( peers[i]._strand == NULL ){
             try{
-              peers[i]._strand = new boost::asio::io_service::strand( acceptor_.get_io_service() );
+              peers[i]._strand = new boost::asio::io_service::strand( (boost::asio::io_service &) acceptor_.get_executor().context() );
             }
             catch(...){
               cout <<"Creating strand threw... nothing major..."<<endl;
@@ -640,7 +640,7 @@ void tcp_server::run_network()
 
 void tcp_server::start_accept()
 {
-    tcp_connection::pointer new_connection = tcp_connection::create(acceptor_.get_io_service());
+    tcp_connection::pointer new_connection = tcp_connection::create((boost::asio::io_service &) acceptor_.get_executor().context());
     new_connection->id = rng();
 
 

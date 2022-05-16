@@ -739,7 +739,7 @@ bool Blockchain::still_waiting_for_full_block(  BlockHash hash, unsigned long ti
 }
 
 
-bool Blockchain::add_block_by_parent_hash_and_chain_id( BlockHash parent_hash, BlockHash new_block, uint32_t chain_id, network_block nb)
+void Blockchain::add_block_by_parent_hash_and_chain_id( BlockHash parent_hash, BlockHash new_block, uint32_t chain_id, network_block nb)
 {
 	add_block_by_parent_hash( &(this->chains[chain_id]), parent_hash, new_block);
 

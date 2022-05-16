@@ -88,7 +88,7 @@ public:
 	bool have_full_block( uint32_t chain_id, BlockHash hash);
     bool still_waiting_for_full_block(  BlockHash hash, unsigned long time_of_now);
 
-	bool add_block_by_parent_hash_and_chain_id( BlockHash parenthash, BlockHash new_block, uint32_t chain_id, network_block nb);
+	void add_block_by_parent_hash_and_chain_id( BlockHash parenthash, BlockHash new_block, uint32_t chain_id, network_block nb);
 
 	vector<BlockHash> get_incomplete_chain_hashes( uint32_t chain_id , unsigned long time_of_now );
 	void remove_waiting_blocks( unsigned long time_of_now );
