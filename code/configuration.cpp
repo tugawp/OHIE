@@ -23,6 +23,14 @@ SOFTWARE.
 #include "configuration.h"
 #include "misc.h"
 
+bool BIZANTINE = false;
+uint32_t TRANSACTION_THROUGHPUT_EACH_NODE = 50; // tx/s in each note
+
+// Nimble aging thrershold
+uint64_t AT = 960; // in milliseconds
+uint64_t D = 240; // in milliseconds
+uint32_t AGING_MONITOR_EACH_MILLISECONDS = 100;
+
 // Number of chains
 uint32_t CHAINS = 1000;
 //
@@ -86,7 +94,7 @@ uint32_t BLOCKS_STORE_FREQUENCY = 1000;
 uint32_t NO_DISCARD_LOCAL=6;
 uint32_t UPDATE_COMMITED_TIME_EACH_MILLISECONDS=500;
 //
-bool fake_transactions = true;
+bool fake_transactions = false;
 //
 uint32_t T_DISCARD[6] = { 6 };
 

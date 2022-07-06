@@ -6,6 +6,7 @@
 #include "MyServer.hpp"
 #include "verify.h"
 #include "params.h"
+#include <boost/algorithm/string/join.hpp>
 
 using namespace std;
 
@@ -36,7 +37,8 @@ bool parse__full_block( vector<std::string> sp, map<string,int> &passed, string 
 string create__ping( string tt, uint32_t dnext, unsigned long tsec, int mode);
 bool parse__ping( vector<std::string> sp, map<string,int> &passed, string &sender_ip, uint32_t &sender_port, string &tt, uint32_t &dnext, unsigned long &tsec , int &mode  );
 
-
+string create__transactions(vector<string> transactions);
+bool parse__transactions(vector<string> sp, vector<string> &transactions);
 
 bool key_present( string key, map<string,int> &passed );
 

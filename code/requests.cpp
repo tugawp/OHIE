@@ -221,7 +221,7 @@ string create__full_block( uint32_t chain_id, BlockHash hash, tcp_server *ser, B
         string tx;
         if ( NULL != b && b->nb->no_txs > 0 ){
             for( int j=0; j< b->nb->no_txs; j++){
-              tx = create_one_transaction();
+              tx = create_one_transaction(b->nb->rank);
               s += tx + "\n";
             }
         }
@@ -313,6 +313,23 @@ bool parse__ping( vector<std::string> sp, map<string,int> &passed, string &sende
     return true;
 }
 
+
+string create__transactions(vector<string> transactions) {
+  return "#transactions," + my_ip + "," + to_string(my_port) + "," +
+         boost::algorithm::join(transactions, ";");
+}
+
+bool parse__transactions(vector<string> sp, vector<string> &transactions) {
+  if (sp.size() != 4) {
+    return false;
+  }
+  transactions = split(sp[3], ";");
+  if (transactions.size() < 1) { // shouldn't happen buuuut okay
+    return false; 
+  }
+  //printf("Parsed %ld transactions, ", transactions.size());
+  return true;
+} 
 
 
 bool key_present( string key, map<string,int> &passed )

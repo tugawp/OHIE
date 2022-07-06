@@ -43,7 +43,7 @@ SOFTWARE.
 #include "verify.h"
 #include "requests.h"
 #include "process_buffer.h"
-
+#include "transactions.h"
 
 
 using boost::asio::ip::tcp;
@@ -55,6 +55,11 @@ using namespace std;
 extern tcp_server *ser;
 extern Blockchain *bc;
 extern mt19937 rng;
+extern map<string, aging_info> aging_transactions;
+extern boost::mutex aging_transactions_mtx;
+extern map<string, aged_info> aged_transactions;
+extern boost::mutex aged_transactions_mtx;
+
 
 mutex mtx; 
 
@@ -88,8 +93,6 @@ tcp::socket& tcp_connection::socket()
 
 void tcp_connection::start()
 {
-  
-
   try{
     auto self(shared_from_this());
     socket_.async_read_some(boost::asio::buffer(data_buffer),
@@ -120,7 +123,7 @@ void tcp_connection::start()
             // Increase amount of received bytes
           	ser->add_bytes_received( length, 0);
 
-			// Process buffer            
+			      // Process buffer            
             process_buffer( full_buffer, ser, bc );
 
             bc->locker_write = false;
@@ -399,6 +402,7 @@ void tcp_server::write_to_one_peer(string peer_ip, uint32_t peer_port, string me
 }
 
 
+// me: "loop" principal
 void tcp_server::run_network()
 {
 
@@ -572,7 +576,7 @@ void tcp_server::run_network()
         bytes_received/(1024.0*1024), bytes_received/(1024.0*1024)/secs, bytes_received/(1024.0*1024)/secs * 3600/1000, 
         bytes_txs_received/(1024.0*1024)/secs, bytes_txs_received/(1024.0*1024)/secs * 3600/1000);
       
-      printf("\n=============== [TXS       :] Verified :  %8ld     Rate: %.0f txs/s  \n", no_verified_transactions, no_verified_transactions/ secs);
+      printf("\n=============== [TXS       :] Verified:  %8ld     Rate: %.0f txs/s     Aging: %8ld     Promised: %8ld\n", no_verified_transactions, no_verified_transactions/ secs, get_aging_count(), get_promised_count());
 
       bc->specific_print_blockchain();
       last_print_blockchain = time_of_now;

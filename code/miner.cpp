@@ -102,23 +102,20 @@ uint32_t mine_new_block( Blockchain *bc)
 	// Determine the new block
 	BlockHash new_block = string_to_blockhash( h );
 
+	// Last block of the chain where new block will be mined
+	block *parent = bc->get_deepest_child_by_chain_id( chain_id );
 
 	// Create file holding the whole block
 	// Supposedly composed of transactions
-	uint32_t no_txs = create_transaction_block( new_block , ser->get_server_folder()+"/"+blockhash_to_string( new_block ) ); 
+	uint32_t no_txs = create_transaction_block(new_block , ser->get_server_folder()+"/"+blockhash_to_string( new_block ), parent->nb->next_rank); 
 	if( 0 == no_txs  ) {
 		printf("Cannot create the file with transactions\n");
 		fflush(stdout);
 		return 0;
 	}
 
-
 	// Find Merkle path for the winning chain
 	vector <string> proof_new_chain = compute_merkle_proof( leaves, chain_id );
-
-	// Last block of the chain where new block will be mined
-	block *parent = bc->get_deepest_child_by_chain_id( chain_id );
-
 
 	network_block nb;
 	nb.chain_id = chain_id;

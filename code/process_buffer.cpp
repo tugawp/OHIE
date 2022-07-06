@@ -31,7 +31,7 @@ extern string my_ip;
 extern uint32_t my_port; 
 
 
-
+// me: onde são processadas as msgs recebidas de outros nós
 void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
 {
 
@@ -361,6 +361,7 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
               }
 
 
+              uint32_t last_rank = bc->get_deepest_child_by_chain_id(chain_id)->nb->next_rank - 1;
               int prevpos = 0;
               int pos = 0;
               int tot_transactions = 0;
@@ -368,7 +369,7 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
               while ( all_good &&  ((pos  = txs.find("\n",pos+1)) >= 0) ){
 
                 string l = txs.substr(prevpos, pos-prevpos);
-                if( fake_transactions ||  verify_transaction( l ) ){
+                if( fake_transactions ||  verify_transaction_from_block(l, b->nb->rank, last_rank) ){ 
                   tot_transactions ++;
                 }
                 else 
@@ -470,12 +471,20 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
                     printf("\033[31;1mSome txs cannot be verified \n\033[0m");
                     fflush(stdout);
                   }
-              }     
-
-              
+              }
+          }     
+      } else if(sp[0] == "#transactions") {
+        vector<string> transactions;
+        if (!parse__transactions(sp, transactions)) {
+          if (p+2 == positions.size()) break;
+          continue;
         }
-    }
-
+        //printf("but only returned %ld transactions\n", transactions.size());
+        
+        add_transactions(transactions);
+        // assume each node talks to all nodes, otherwise we would 
+        // broadcast the new transactions
+      } 
   }
 
   if( positions.size() > 1 &&  positions[p] < m.size())

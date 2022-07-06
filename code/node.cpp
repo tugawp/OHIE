@@ -45,6 +45,7 @@ SOFTWARE.
 #include "get_ip.h"
 #include "configuration.h"
 #include "misc.h"
+#include "transactions.h"
 
 using boost::asio::ip::tcp;
 using namespace std;
@@ -233,12 +234,12 @@ int main(int argc, char **argv) {
     /*
      * Start the server
      */
+
+    boost::thread t{aging_monitor};
+    boost::thread t2{transaction_creator};
     server.run_network();
     time_of_start = std::chrono::system_clock::now().time_since_epoch() /  std::chrono::milliseconds(1);
     io_service.run();
-
-
-
 
 
     return 0;

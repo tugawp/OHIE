@@ -660,6 +660,9 @@ void Blockchain::specific_print_blockchain()
 	printf(": ");
 	for(int j=0; j<NO_T_DISCARDS; j++)
 		printf("%0.1f secs ", commited_latency[j]/1000.0/commited_total[j]);
+	printf("   Promise: ");
+		printf("%lu ms", get_average_promise_time());
+	
 	printf(" \n");
 
 
