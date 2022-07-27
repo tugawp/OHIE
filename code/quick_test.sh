@@ -1,7 +1,27 @@
 #!/bin/bash
 
 # kill all nodes
-fuser -k nodeouput*
+fuser -k Node
+
+
+
+if [ -z "$1" ]
+then
+    N=3
+else
+    N=$1
+fi
+
+FROM=8001
+TO=$(($FROM + $N - 1))
+
+rm _peers
+
+echo -n "127.0.0.1:$FROM" >> _peers
+for PORT in $(seq $(($FROM + 1)) $TO);
+do
+    echo -n -e "\n127.0.0.1:$PORT" >> _peers
+done
 
 # remove created folders (if any)
 rm -rf _Blockchains
@@ -13,7 +33,9 @@ rm -rf _Sessions
 # remove previous outputs
 rm outputnode*
 
-# start 3 nodes
-nohup  ./Node 8001 _peers 127.0.0.1 > outputnode1.txt &
-nohup  ./Node 8002 _peers 127.0.0.1 > outputnode2.txt &
-nohup  ./Node 8003 _peers 127.0.0.1 > outputnode3.txt &
+for i in $(seq 1 $N);
+do
+    PORT=$(($FROM + $i - 1))
+    echo "Node $i with port $PORT"
+    nohup ./Node $PORT _peers 127.0.0.1 > outputnode$i.txt &
+done

@@ -375,7 +375,7 @@ void aging_monitor()
 		aging_transactions_mtx.lock();
 		for (auto it = aging_transactions.begin(); it != aging_transactions.end();)
 		{
-			uint64_t age = get_now() - it->second.time;
+			auto age = get_now() - it->second.time;
 			if (age > AT)
 			{
 				aged_transactions[it->first] = { it->second.full_tx, age, it->second.rank };
