@@ -35,6 +35,7 @@ extern bool BIZANTINE;
 extern tcp_server* ser;
 extern string my_ip;
 extern uint32_t my_port;
+extern uint32_t CLIENTS_PER_NODE;
 string my_address;
 
 map<string, aging_info> aging_transactions; // key: "sender_addr:seq", value: aging_info { tx, time }
@@ -105,7 +106,8 @@ string get_random_address(uint32_t size_in_dwords)
 {
 	stringstream sstream;
 	for (int i = 0; i < size_in_dwords; i++)
-		sstream << setfill('0') << setw(8) << hex << rng();
+		sstream << setfill('0') << setw(8) << hex << rng(); 
+		// makes sense to generate address of client that exists
 
 	return sstream.str();
 }
@@ -113,8 +115,9 @@ string get_random_address(uint32_t size_in_dwords)
 
 string get_my_address(uint32_t size_in_dwords) 
 {
+	int client_id = rng() % CLIENTS_PER_NODE;
 	if (my_address.empty()) {
-		my_address = my_ip + to_string(my_port);
+		my_address = my_ip + to_string(my_port) + to_string(client_id);
 		for (int i = 0; (size_in_dwords * 8 - my_address.size()); i++)
 			my_address += "0";
 	}
@@ -210,7 +213,7 @@ void verify_transaction(string full_tx)
 		auto it_seq = next_seqs.find(from);
 
 		if (from.size() != 8 * ADDRESS_SIZE_IN_DWORDS || to.size() != 8 * ADDRESS_SIZE_IN_DWORDS || amount.size() <= 0 || (it_seq != next_seqs.end() && it_seq->second < seq_N && false))
-		{
+		{ // todo: problema com next seqs
 			return; //ignore
         }  
 		

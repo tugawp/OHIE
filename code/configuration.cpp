@@ -31,6 +31,9 @@ int64_t AT = 960; // in milliseconds
 int64_t D = 240; // in milliseconds
 int32_t AGING_MONITOR_EACH_MILLISECONDS = 100;
 
+// Number of clients
+uint32_t CLIENTS_PER_NODE = 10;
+
 // Number of chains
 uint32_t CHAINS = 1000;
 //
