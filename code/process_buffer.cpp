@@ -366,11 +366,13 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
               int pos = 0;
               int tot_transactions = 0;
               bool all_good = true;
+              list<string> txs_list;
               while ( all_good &&  ((pos  = txs.find("\n",pos+1)) >= 0) ){
 
                 string l = txs.substr(prevpos, pos-prevpos);
                 if( fake_transactions ||  verify_transaction_from_block(l, b->nb->rank, last_rank) ){ 
                   tot_transactions ++;
+                  txs_list.push_back(l);
                 }
                 else 
                   all_good = false;
@@ -393,7 +395,7 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
                   continue;
               }
 
-              if( all_good){
+              if(all_good){
 
                   // Assing all from nb
                   network_block *n = b->nb;
@@ -445,6 +447,8 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
                     printf("\033[32;1mAll %4d txs are verified \n\033[0m", tot_transactions);
                     fflush(stdout);
                   }
+
+                  update_transactions_block(txs_list, hash);
 
                   // Store into the file
                   if ( WRITE_BLOCKS_TO_HDD ){

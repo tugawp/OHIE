@@ -159,6 +159,8 @@ uint32_t mine_new_block( Blockchain *bc)
 	// Increase the miner counter
 	bc->add_mined_block();
 
+	// todo, save the block of each transaction, so we can check when they are mined
+
 
 	// Send the block to peers
 	ser->send_block_to_peers( &nb );

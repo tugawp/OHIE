@@ -975,6 +975,8 @@ void Blockchain::update_blocks_commited_time()
 						t->nb->time_commited[j] = time_of_now;
 						commited_total[j] ++;
 						commited_latency[j] += t->nb->time_commited[j] - t->nb->time_mined;
+
+						commit_block(t->hash);
 						
 						if ( STORE_BLOCKS && (t->hash % BLOCKS_STORE_FREQUENCY) == 0  ){
 							string filename =  string(FOLDER_BLOCKS)+"/"+my_ip+"-"+to_string(my_port);

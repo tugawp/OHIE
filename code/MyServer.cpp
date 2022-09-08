@@ -576,7 +576,7 @@ void tcp_server::run_network()
         bytes_received/(1024.0*1024), bytes_received/(1024.0*1024)/secs, bytes_received/(1024.0*1024)/secs * 3600/1000, 
         bytes_txs_received/(1024.0*1024)/secs, bytes_txs_received/(1024.0*1024)/secs * 3600/1000);
       
-      printf("\n=============== [TXS       :] Verified:  %8ld     Rate: %.0f txs/s     Aging: %8ld     Promised: %8ld\n", no_verified_transactions, no_verified_transactions/ secs, get_aging_count(), get_promised_count());
+      printf("\n=============== [TXS       :] Verified:  %8ld     Rate: %.0f txs/s     Aging: %d     Promised: %d\n", no_verified_transactions, no_verified_transactions/ secs, get_aging_count(), get_promised_count());
 
       bc->specific_print_blockchain();
       last_print_blockchain = time_of_now;

@@ -27,9 +27,9 @@ bool BIZANTINE = false;
 uint32_t TRANSACTION_THROUGHPUT_EACH_NODE = 50; // tx/s in each note
 
 // Nimble aging thrershold
-uint64_t AT = 960; // in milliseconds
-uint64_t D = 240; // in milliseconds
-uint32_t AGING_MONITOR_EACH_MILLISECONDS = 100;
+int64_t AT = 960; // in milliseconds
+int64_t D = 240; // in milliseconds
+int32_t AGING_MONITOR_EACH_MILLISECONDS = 100;
 
 // Number of chains
 uint32_t CHAINS = 1000;
