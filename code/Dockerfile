@@ -2,11 +2,10 @@ FROM alpine:3.16.2
 
 WORKDIR /OHIE
 
-RUN apt add --no-cache libssl-dev
-RUN apt add --no-cache libboost-all-dev
+RUN apk add --no-cache openssl-dev boost boost-dev build-base
 
 COPY ./ ./
 
-CMD make
+RUN make
 
 ENTRYPOINT [ "./Node"]
