@@ -47,6 +47,9 @@ boost::mutex aged_transactions_mtx;
 map<string, uint64_t> next_seqs; // of promised transactions (ignore for now because some transactions are commited and we can't update seq)
 boost::mutex next_seqs_mtx;
 
+map<string, string> pending_transactions; // transactions that don't all dependencies met
+boost::mutex pending_transactions_mtx;    // dependencies are the explicit ones and previous sequence no
+
 deque<string> mempool;
 boost::mutex mempool_mtx;
 
@@ -68,7 +71,7 @@ int64_t get_average_promise_time()
 			count++;
 		}
 	}
-	aged_transactions_mtx.unlock();
+	aged_transactions_mtx.unlock(); 
 
 	if (count > 0)
 		return total_promise_time / count; //milliseconds
@@ -113,32 +116,34 @@ string get_random_address(uint32_t size_in_dwords)
 }
 
 
-string get_my_address(uint32_t size_in_dwords) 
+string get_random_from_address(uint32_t size_in_dwords) 
 {
-	int client_id = rng() % CLIENTS_PER_NODE;
-	if (my_address.empty()) {
-		my_address = my_ip + to_string(my_port) + to_string(client_id);
-		for (int i = 0; (size_in_dwords * 8 - my_address.size()); i++)
-			my_address += "0";
-	}
-	return my_address;
+	int client_id = rng() % CLIENTS_PER_NODE; 
+	string address = my_ip + to_string(my_port) + to_string(client_id);
+	for (int i = 0; (size_in_dwords * 8 - address.size()); i++)
+		address += "0";
+	return address;
 }
 
 
-string get_next_seq(string address)
+uint64_t get_next_seq(string address)
 {
-	auto it = next_seqs.find(address);
-	if (it != next_seqs.end())
-	{
-		uint64_t seq = it->second;
-		next_seqs[address] = seq + 1;
-		return to_string(seq);
-	}
-	next_seqs[address] = 1;
-	return to_string(0);
+	return next_seqs[address]; //returns 0 if key not present
 }
 
-string create_one_transaction(uint32_t rank) //não sabemos rank, como saber?
+
+void update_next_seq(string address)
+{
+	next_seqs[address] += 1;
+}
+
+bool check_dependencies(string from, uint64_t seq_N, string full_tx)
+{
+	// full_tx not used for now but will be used to check explicit transactions
+	return next_seqs[from] == seq_N;
+}
+
+string create_one_transaction(uint32_t rank) // Maybe rename to get_one_transaction
 {
 	while (1)
 	{	
@@ -149,7 +154,7 @@ string create_one_transaction(uint32_t rank) //não sabemos rank, como saber?
 			tx = mempool.front();
 			mempool.pop_front();
 		}
-		mempool_mtx.unlock();
+		mempool_mtx.unlock(); 
 		if (!tx.empty()) {
 			//printf("Returning transaction %s\n", tx.c_str());
 			return tx;
@@ -212,7 +217,7 @@ void verify_transaction(string full_tx)
 		uint64_t seq_N = stoull(seq);
 		auto it_seq = next_seqs.find(from);
 
-		if (from.size() != 8 * ADDRESS_SIZE_IN_DWORDS || to.size() != 8 * ADDRESS_SIZE_IN_DWORDS || amount.size() <= 0 || (it_seq != next_seqs.end() && it_seq->second < seq_N && false))
+		if (from.size() != 8 * ADDRESS_SIZE_IN_DWORDS || to.size() != 8 * ADDRESS_SIZE_IN_DWORDS || amount.size() <= 0)
 		{ // todo: problema com next seqs
 			return; //ignore
         }  
@@ -228,16 +233,23 @@ void verify_transaction(string full_tx)
 
 		aging_transactions_mtx.lock(); //printf("Locked aging_transactions_mtx\n");
 		aged_transactions_mtx.lock(); //printf("Locked aged_transactions_mtx\n");
+		next_seqs_mtx.lock();
+		pending_transactions_mtx.lock();
+		mempool_mtx.lock(); //printf("Locked mempool_mtx\n");
 		auto it_aging = aging_transactions.find(tx_key);
 		auto it_aged = aged_transactions.find(tx_key);
 
 		if (it_aging == aging_transactions.end() &&
 			it_aged == aged_transactions.end())
 		{	
-			mempool_mtx.lock(); //printf("Locked mempool_mtx\n");
-			mempool.push_back(full_tx); // add to mempool 
-			mempool_mtx.unlock(); //printf("Unlocked mempool_mtx\n"); 
-			aging_transactions[from + ":" + seq] = { full_tx, get_now() }; // add to aging transactions
+			if (!check_dependencies(from, seq_N, full_tx) && pending_transactions.find(tx_key) == pending_transactions.end()) {
+				std::cout << "Adding " << tx_key << " to pending transactions" << std::endl << flush;
+				pending_transactions[tx_key] = full_tx;
+			} else {
+				std::cout << "Adding " << tx_key << " to mempool transactions" << std::endl << flush;
+				mempool.push_back(full_tx);
+			}
+			aging_transactions[tx_key] = { full_tx, get_now() }; // add to aging transactions even if in pending transactinos
 		} else
 		{
 			string previous_full_tx = it_aging != aging_transactions.end() ? it_aging->second.full_tx : it_aged->second.full_tx;
@@ -254,8 +266,11 @@ void verify_transaction(string full_tx)
 			}
 			//todo: add to mempool?
 		}
-		aged_transactions_mtx.unlock(); //printf("Unlocked aged_transactions_mtx\n");
-		aging_transactions_mtx.unlock(); //printf("Unlocked aging_transactions_mtx\n");
+		mempool_mtx.unlock();  //printf("Unlocked mempool_mtx\n"); 
+		pending_transactions_mtx.unlock(); 
+		next_seqs_mtx.unlock(); 
+		aged_transactions_mtx.unlock();  //printf("Unlocked aged_transactions_mtx\n");
+		aging_transactions_mtx.unlock();  //printf("Unlocked aging_transactions_mtx\n");
 	} else
 	{
 		if (PRINT_TRANSMISSION_ERRORS)
@@ -284,8 +299,10 @@ bool verify_transaction_from_block(string full_tx, uint32_t rank, uint32_t last_
 		uint32_t suffix_size = last_rank - rank;
 
 		uint64_t seq_N = stoull(seq);
-		auto it_seq = next_seqs.find(from);
-		if (from.size() != 8 * ADDRESS_SIZE_IN_DWORDS || to.size() != 8 * ADDRESS_SIZE_IN_DWORDS || amount.size() <= 0 || (it_seq != next_seqs.end() && it_seq->second < seq_N))
+		next_seqs_mtx.lock();
+		uint64_t next_seq = get_next_seq(from);
+		next_seqs_mtx.unlock(); 
+		if (from.size() != 8 * ADDRESS_SIZE_IN_DWORDS || to.size() != 8 * ADDRESS_SIZE_IN_DWORDS || amount.size() <= 0 || seq_N > next_seq)
 			return false;
 
 		string tx = from + ":" + seq + ":" + to + ":" + amount;
@@ -296,7 +313,7 @@ bool verify_transaction_from_block(string full_tx, uint32_t rank, uint32_t last_
 		string tx_key = from + ":" + seq;
 
 		
-		auto it_aged = aged_transactions.find(tx_key);
+		auto it_aged = aged_transactions.find(tx_key); //lock?
 		if (it_aged != aged_transactions.end() && !it_aged->second.full_tx.compare(full_tx)
 			&& RSS(it_aged->second) > suffix_size)
 			return false;
@@ -323,14 +340,14 @@ void update_transactions_block(list<string> txs, BlockHash block_hash) {
 		string seq = s[1];
 		transaction_block[from + ":" + seq] = block_hash;
 	}
-	transaction_block_mtx.unlock();
+	transaction_block_mtx.unlock();  
 }
 
 int get_aging_count()
 {
 	aging_transactions_mtx.lock(); 
 	int aging_total = aging_transactions.size();
-	aging_transactions_mtx.unlock();
+	aging_transactions_mtx.unlock(); 
 	return aging_total;
 }
 
@@ -343,11 +360,11 @@ int get_promised_count()
 		if ((it->second.end_time - it->second.start_time) > AT)
 			promised_count++;
 	}
-	aged_transactions_mtx.unlock();
+	aged_transactions_mtx.unlock(); 
 	return promised_count;
 }
 
-void add_transactions(vector<string> transactions)
+void add_transactions(vector<string> transactions) // transactions received from broadcast
 {
 	//printf("Hmm, add_transaction(txs) received %ld transactions, ", transactions.size());
 	int i = 0;
@@ -372,37 +389,62 @@ void aging_monitor()
 	{
 		int64_t start = get_now();
 		aging_transactions_mtx.lock();
-		next_seqs_mtx.lock();	
 		aged_transactions_mtx.lock();
-		int count = 0;
+		next_seqs_mtx.lock();	
+		pending_transactions_mtx.lock();
+		mempool_mtx.lock();
 
-		for (auto it = aging_transactions.begin(); it != aging_transactions.end();)
+		std::cout << aging_transactions.size() << " aging transactions and " << pending_transactions.size() << " pending transactions"<< std::endl << flush;
+
+		int i = 0; 
+		for (auto it = aging_transactions.begin(); it != aging_transactions.end(); i++)
 		{	
 			int64_t now = get_now();
 			int64_t age = now - it->second.time;
 			//std::cout << "now: " << now << ", start: " << it->second.time << ", age: " << age << std::endl << flush;
-			if (age > AT)
-			{
 				vector<string> s = split(it->first, ":");
 				string from = s[0];
 				string seq = s[1];
-				uint64_t *next_seq = &next_seqs[from]; // como next seqs é atualizado, podemos limpar transação do aged transactions
 				uint64_t seqN = stoull(seq);
-				if (seqN > *next_seq) {
-					*next_seq++;
+
+				uint64_t next_seq = get_next_seq(from); // como next seqs é atualizado, podemos limpar transação do aged transactions
+			if (age > AT && seqN == next_seq)
+			{
+				//std::cout << "Before updating next_seq of " << from << ": " << next_seq << std::endl << flush;
+
+				//std::cout << "received seq: " << seqN << ", expected seq: " << next_seq << std::endl << flush;
+				update_next_seq(from);
+
+				string next_tx_key = from + ":" + to_string(get_next_seq(from));
+				auto it_pending_tx = pending_transactions.find(next_tx_key);
+				if (it_pending_tx != pending_transactions.end()) {
+					string pending_tx = it_pending_tx->second;
+					if (check_dependencies(from, get_next_seq(from), pending_tx)) {
+						std::cout << "Moving " << next_tx_key << " from pending transactions to mempool" << std::endl << flush;
+						mempool.push_back(pending_tx); 
+						pending_transactions.erase(next_tx_key);
+					} 
 				}
 				
 				aged_transactions[it->first] = { it->second.full_tx, it->second.time, get_now() };
 				it = aging_transactions.erase(it);
-				count++;
+				//std::cout << "After updating next_seq of " << from << ": " << get_next_seq(from) << std::endl << flush;
+
 			} else
-			{
+			{ /*
+				vector<string> s = split(it->first, ":");
+				string from = s[0];
+				string seq = s[1];
+				std::cout << "Transaction " << from << ":" << seq << " hasn't aged enough" << std::endl << flush;*/
 				++it;
 			}
 		}
-		aged_transactions_mtx.unlock();
-		next_seqs_mtx.unlock();	
-		aging_transactions_mtx.unlock();
+
+		mempool_mtx.unlock(); 
+		pending_transactions_mtx.unlock(); 
+		next_seqs_mtx.unlock(); 	
+		aged_transactions_mtx.unlock(); 
+		aging_transactions_mtx.unlock(); 
 
 		int64_t end = get_now(); //overkill?
 		boost::this_thread::sleep(boost::posix_time::milliseconds(AGING_MONITOR_EACH_MILLISECONDS));
@@ -411,17 +453,19 @@ void aging_monitor()
 
 void transaction_creator()
 {
-	uint64_t seqN = 0; // no persistance but okay, also maybe use uint64_t or smth
+	//uint64_t seqN = 0; // no persistance but okay, also maybe use uint64_t or smth
 
 	while (1)
 	{
 		int64_t start = get_now();
-
+		aging_transactions_mtx.lock();
+		next_seqs_mtx.lock();
+		mempool_mtx.lock();
 		vector<string> transactions;
 		for (int i = 0; i < TRANSACTION_THROUGHPUT_EACH_NODE; i++) //careful with transaction size, are there restrictinons?
 		{ // tx/s per node
-			string from = get_my_address(ADDRESS_SIZE_IN_DWORDS);
-			string seq = to_string(seqN);
+			string from = get_random_from_address(ADDRESS_SIZE_IN_DWORDS);
+			string seq = to_string(get_next_seq(from));
 			string to = get_random_address(ADDRESS_SIZE_IN_DWORDS);
 			string amount = to_string(rng());
 
@@ -431,19 +475,21 @@ void transaction_creator()
 			string full_tx = tx + ":" + sign;
 			transactions.push_back(full_tx); //change create one transaction to use node id
 
-			mempool_mtx.lock();
 			mempool.push_back(full_tx);
-			mempool_mtx.unlock();
+
+			//aging_transactions[from + ":" + seq] = { full_tx, get_now() }; 
 
 			if (BIZANTINE && bool_with_prob())
 			{ // todo: if (bizantine && ...)
 				//repeat seq
 				continue;
 			}
-			seqN += 1; // seq++; erro?
+			update_next_seq(from); // seq++; erro?
 
-			//todo: add created transactions to aging_transactions
 		}
+		mempool_mtx.unlock(); 
+		next_seqs_mtx.unlock(); 
+		aging_transactions_mtx.unlock(); 
 
 		string s = create__transactions(transactions);
 		//printf("Sending transactions\n");
@@ -459,9 +505,9 @@ void commit_block(BlockHash block_hash) {
 	// iterar transações do bloco e atualizar a age caso n esteja promised 
 	// atualizar next seqs?
 	list<string> txs;
-	transaction_block_mtx.lock();
 	aged_transactions_mtx.lock();
 	next_seqs_mtx.lock();
+	transaction_block_mtx.lock();
 	for (auto it = transaction_block.begin(); it != transaction_block.end(); it++) {
 		if (it->second == block_hash) {
 			string tx = it->first; // from:seq
@@ -471,17 +517,20 @@ void commit_block(BlockHash block_hash) {
 				ai->end_time = get_now(); //todo - we need to keep the start instant
 				vector<string> s = split(tx, ":");
 				string from = s[0];
+				
 				string seq = s[1];
-				uint64_t *next_seq = &next_seqs[from];
 				uint64_t seqN = stoull(seq);
-				if (seqN > *next_seq) {
-					*next_seq++; //probably wont happen
+				
+				uint64_t next_seq = get_next_seq(from);
+				
+				if (seqN == next_seq) {
+					update_next_seq(from); //happens if didn't age before
 				}
 			}
 		}
 	}
-	next_seqs_mtx.unlock();		
-	aged_transactions_mtx.unlock();
-	transaction_block_mtx.unlock();
+	transaction_block_mtx.unlock(); 
+	next_seqs_mtx.unlock(); 		
+	aged_transactions_mtx.unlock(); 
 }
 
