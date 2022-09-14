@@ -42,7 +42,7 @@ map<string, aging_info> aging_transactions; // key: "sender_addr:seq", value: ag
 boost::mutex aging_transactions_mtx;
 
 map<string, aged_info> aged_transactions; // key: "sender_addr:seq", value: aged_info { tx, age }
-boost::mutex aged_transactions_mtx;
+boost::mutex aged_transactions_mtx;       // transações que envelheceram mal
 
 map<string, uint64_t> next_seqs; // of promised transactions (ignore for now because some transactions are commited and we can't update seq)
 boost::mutex next_seqs_mtx;
@@ -56,27 +56,12 @@ boost::mutex mempool_mtx;
 map<string, BlockHash> transaction_block; // saves the block of each transaction (string is from:seq)
 boost::mutex transaction_block_mtx;
 
+uint64_t promise_count = 0;
+uint64_t average_promise_time = 0;
+
 int64_t get_average_promise_time()
 {
-	int64_t total_promise_time = 0;
-	int64_t count = 0;
-
-	aged_transactions_mtx.lock();
-	for (auto it = aged_transactions.begin(); it != aged_transactions.end(); it++)
-	{
-		int64_t age = it->second.end_time - it->second.start_time;
-		if (age > AT)
-		{
-			total_promise_time += age;
-			count++;
-		}
-	}
-	aged_transactions_mtx.unlock(); 
-
-	if (count > 0)
-		return total_promise_time / count; //milliseconds
-	else
-		return 0;
+	return average_promise_time;
 }
 
 int64_t get_now()
@@ -217,7 +202,7 @@ void verify_transaction(string full_tx)
 		uint64_t seq_N = stoull(seq);
 		auto it_seq = next_seqs.find(from);
 
-		if (from.size() != 8 * ADDRESS_SIZE_IN_DWORDS || to.size() != 8 * ADDRESS_SIZE_IN_DWORDS || amount.size() <= 0)
+		if (from.size() != 8 * ADDRESS_SIZE_IN_DWORDS || to.size() != 8 * ADDRESS_SIZE_IN_DWORDS || amount.size() <= 0 || seq_N <= get_next_seq(from))
 		{ // todo: problema com next seqs
 			return; //ignore
         }  
@@ -237,7 +222,7 @@ void verify_transaction(string full_tx)
 		pending_transactions_mtx.lock();
 		mempool_mtx.lock(); //printf("Locked mempool_mtx\n");
 		auto it_aging = aging_transactions.find(tx_key);
-		auto it_aged = aged_transactions.find(tx_key);
+		auto it_aged = aged_transactions.find(tx_key); 
 
 		if (it_aging == aging_transactions.end() &&
 			it_aged == aged_transactions.end())
@@ -252,11 +237,9 @@ void verify_transaction(string full_tx)
 			aging_transactions[tx_key] = { full_tx, get_now() }; // add to aging transactions even if in pending transactinos
 		} else
 		{
-			string previous_full_tx = it_aging != aging_transactions.end() ? it_aging->second.full_tx : it_aged->second.full_tx;
-			if (!previous_full_tx.compare(full_tx)) // if not same transaction
-			{ 
-				// don't add to mempool
-				if (it_aging != aging_transactions.end()) // if previous is aging
+			if (it_aging != aging_transactions.end())  { // conflict with aging transaction (probably double spend)
+				string previous_full_tx = it_aging->second.full_tx;
+				if (!previous_full_tx.compare(full_tx)) // if not same transaction
 				{ 
 					aging_info ai = it_aging->second;
 					aged_transactions[from + ":" + seq] = { ai.full_tx,
