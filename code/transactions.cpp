@@ -37,12 +37,13 @@ extern string my_ip;
 extern uint32_t my_port;
 extern uint32_t CLIENTS_PER_NODE;
 string my_address;
+const string EMPTY_DEPENDENCY = std::string(ADDRESS_SIZE_IN_DWORDS * 8, '0') + ":0";
 
 map<string, aging_info> aging_transactions; // key: "sender_addr:seq", value: aging_info { tx, time }
 boost::mutex aging_transactions_mtx;
 
 map<string, aged_info> aged_transactions; // key: "sender_addr:seq", value: aged_info { tx, age }
-boost::mutex aged_transactions_mtx;
+boost::mutex aged_transactions_mtx;       // remove transactions from aged on commit event 
 
 map<string, uint64_t> next_seqs; // of promised transactions (ignore for now because some transactions are commited and we can't update seq)
 boost::mutex next_seqs_mtx;
@@ -55,6 +56,10 @@ boost::mutex mempool_mtx;
 
 map<string, BlockHash> transaction_block; // saves the block of each transaction (string is from:seq)
 boost::mutex transaction_block_mtx;
+
+map<string, vector<string>> dependencies; // key: dependency, value: dependent (when key finishes move value from pending to mempool)
+boost::mutex dependencies_mtx;
+
 
 int64_t get_average_promise_time()
 {
@@ -115,7 +120,6 @@ string get_random_address(uint32_t size_in_dwords)
 	return sstream.str();
 }
 
-
 string get_random_from_address(uint32_t size_in_dwords) 
 {
 	int client_id = rng() % CLIENTS_PER_NODE; 
@@ -125,21 +129,67 @@ string get_random_from_address(uint32_t size_in_dwords)
 	return address;
 }
 
-
 uint64_t get_next_seq(string address)
 {
 	return next_seqs[address]; //returns 0 if key not present
 }
-
 
 void update_next_seq(string address)
 {
 	next_seqs[address] += 1;
 }
 
-bool check_dependencies(string from, uint64_t seq_N, string full_tx)
-{
-	// full_tx not used for now but will be used to check explicit transactions
+bool is_promised(string tx) { //promised or commited
+	vector<string> s = split(tx, ":");
+	string from = s[0];
+	string seq = s[1];
+	return get_next_seq(from) > stoull(seq); // all seqs before get_next_seq(from) are promised/committed
+}
+
+string get_dependency(string to) {
+	string dependency = EMPTY_DEPENDENCY; 
+	aged_transactions_mtx.lock();
+	if (aged_transactions.size() > 0) {
+		auto it = aged_transactions.begin();
+		std::advance(it, rng() % aged_transactions.size());
+		vector<string> transaction = split(it->second.full_tx, ":");
+		string from = transaction[0];
+		string seq = transaction[1];
+		dependency = from + ":" + seq;
+	}
+	// for (auto it = aged_transactions.begin(); it != aged_transactions.end(); it++)
+	// {	
+	// 	vector<string> transaction = split(it->second.full_tx, ":");
+	// 	string addr = transaction[2];
+	// 	if (addr == to && is_promised(it->second.full_tx)) {
+	// 		string from = transaction[0];
+	// 		string seq = transaction[1];
+	// 		dependency = from + seq;
+	// 		break;
+	// 	}
+	// }
+	aged_transactions_mtx.unlock();
+	return dependency;
+}
+
+
+void save_dependency(string from, uint64_t seq_N, string dependency) {
+	string tx_key = from + ":" + to_string(seq_N);
+	dependencies[dependency].push_back(tx_key); 
+} 
+
+void clear_dependencies(string dependency) {
+	dependencies[dependency].clear();
+}
+
+bool check_dependencies(string from, uint64_t seq_N, string dependency)
+{	
+	if (dependency != EMPTY_DEPENDENCY && !is_promised(dependency)) {
+		save_dependency(from, seq_N, dependency);
+		std::cout << "Because of explicit dependency: "; 
+		return false;
+	}
+	std::cout << "Explicit dependency: " << dependency << std::endl << flush; 
 	return next_seqs[from] == seq_N;
 }
 
@@ -206,13 +256,14 @@ void verify_transaction(string full_tx)
 	//NOT SAVING TRANSACTIONS BECAUSE VERIFICATIONS FAIL OOPSSSSS
 
 	vector<string> s = split(full_tx, ":");
-	if (s.size() == 5)
+	if (s.size() == 7)
 	{
 		string from = s[0];
 		string seq = s[1];
 		string to = s[2];
 		string amount = s[3];
-		string sign = s[4];
+		string dependency = s[4] + ":" + s[5];
+		string sign = s[6];
 
 		uint64_t seq_N = stoull(seq);
 		auto it_seq = next_seqs.find(from);
@@ -222,7 +273,7 @@ void verify_transaction(string full_tx)
 			return; //ignore
         }  
 		
-		string tx = from + ":" + seq + ":" + to + ":" + amount;
+		string tx = from + ":" + seq + ":" + to + ":" + amount + ":" + dependency;
 
 
 		if (false && !verify_message(tx, sign)) //maybe ignore signatures
@@ -242,7 +293,7 @@ void verify_transaction(string full_tx)
 		if (it_aging == aging_transactions.end() &&
 			it_aged == aged_transactions.end())
 		{	
-			if (!check_dependencies(from, seq_N, full_tx) && pending_transactions.find(tx_key) == pending_transactions.end()) {
+			if (!check_dependencies(from, seq_N, dependency) && pending_transactions.find(tx_key) == pending_transactions.end()) {
 				std::cout << "Adding " << tx_key << " to pending transactions" << std::endl << flush;
 				pending_transactions[tx_key] = full_tx;
 			} else {
@@ -287,14 +338,18 @@ bool verify_transaction_from_block(string full_tx, uint32_t rank, uint32_t last_
 	// me: guardar transação com instante de chegada (se ainda não existir)
 	// me: rejeitar se transação já existir ou n tiver sufixo suficiente
 	//     (se calhar passar informação sobre nº do bloco desta transação)
+	// TODO: feels incomplete, add transactions to aging if not known?
+	//       Also, if dependencies are not promised, ignore withou adding to
+	//       pending and aging_transactions?
 	vector<string> s = split(full_tx, ":");
-	if (s.size() == 5)
+	if (s.size() == 7)
 	{
 		string from = s[0];
 		string seq = s[1];
 		string to = s[2];
 		string amount = s[3];
-		string sign = s[4];
+		string dependency = s[4] + ":" + s[5];
+		string sign = s[6];
 
 		uint32_t suffix_size = last_rank - rank;
 
@@ -302,16 +357,17 @@ bool verify_transaction_from_block(string full_tx, uint32_t rank, uint32_t last_
 		next_seqs_mtx.lock();
 		uint64_t next_seq = get_next_seq(from);
 		next_seqs_mtx.unlock(); 
-		if (from.size() != 8 * ADDRESS_SIZE_IN_DWORDS || to.size() != 8 * ADDRESS_SIZE_IN_DWORDS || amount.size() <= 0 || seq_N > next_seq)
+		if (from.size() != 8 * ADDRESS_SIZE_IN_DWORDS 
+			|| to.size() != 8 * ADDRESS_SIZE_IN_DWORDS || amount.size() <= 0 
+			|| seq_N > next_seq || !is_promised(dependency))
 			return false;
 
-		string tx = from + ":" + seq + ":" + to + ":" + amount;
+		string tx = from + ":" + seq + ":" + to + ":" + amount + ":" + dependency;
 
 		if (false || !verify_message(tx, sign))
 			return false;
 
 		string tx_key = from + ":" + seq;
-
 		
 		auto it_aged = aged_transactions.find(tx_key); //lock?
 		if (it_aged != aged_transactions.end() && !it_aged->second.full_tx.compare(full_tx)
@@ -382,6 +438,44 @@ bool bool_with_prob()
 	return false;
 }
 
+
+void notify_dependencies(string from, string seq) {
+	string tx = from + ":" + seq;
+
+	//implicit dependency
+	uint64_t next_seq = get_next_seq(from);
+	string next_tx_key = from + ":" + to_string(next_seq);
+	auto it = pending_transactions.find(next_tx_key);
+	if (it != pending_transactions.end()) {
+		vector<string> s = split(it->second, ":");
+		string next_tx_dependency = s[4] + ":" + s[5];
+		if (check_dependencies(from, next_seq, next_tx_dependency)) {
+			std::cout << "Moving " << next_tx_key << " from pending transactions to mempool" << std::endl << flush;
+			mempool.push_back(it->second); 
+			pending_transactions.erase(next_tx_key);
+		} 
+	}
+	
+	//explicit dependencies
+	vector<string> explicit_dependencies = dependencies[tx];
+	for (auto it = explicit_dependencies.begin(); it != explicit_dependencies.end(); it++) {
+		string tx_key = *it;
+		auto pending_tx_it = pending_transactions.find(tx_key);
+		if (pending_tx_it == pending_transactions.end()) {
+			std::cout << "PANIC" << std::endl << flush;
+			continue; //not found in pending transaction: shouldn't happen
+		}
+		vector<string> s = split(pending_tx_it->second, ":");
+		string pending_tx_dependency = s[4] + ":" + s[5];
+		if (check_dependencies(from, next_seq, pending_tx_dependency)) {
+			std::cout << "Moving " << tx_key << " from pending transactions to mempool" << std::endl << flush;
+			mempool.push_back(pending_tx_it->second); 
+			pending_transactions.erase(pending_tx_it);
+		} 
+	}
+	clear_dependencies(tx);
+}
+
 // Tasks
 void aging_monitor()
 {
@@ -393,6 +487,7 @@ void aging_monitor()
 		next_seqs_mtx.lock();	
 		pending_transactions_mtx.lock();
 		mempool_mtx.lock();
+		dependencies_mtx.lock();
 
 		std::cout << aging_transactions.size() << " aging transactions and " << pending_transactions.size() << " pending transactions"<< std::endl << flush;
 
@@ -409,37 +504,19 @@ void aging_monitor()
 
 				uint64_t next_seq = get_next_seq(from); // como next seqs é atualizado, podemos limpar transação do aged transactions
 			if (age > AT && seqN == next_seq)
-			{
-				//std::cout << "Before updating next_seq of " << from << ": " << next_seq << std::endl << flush;
-
-				//std::cout << "received seq: " << seqN << ", expected seq: " << next_seq << std::endl << flush;
+			{	
 				update_next_seq(from);
-
-				string next_tx_key = from + ":" + to_string(get_next_seq(from));
-				auto it_pending_tx = pending_transactions.find(next_tx_key);
-				if (it_pending_tx != pending_transactions.end()) {
-					string pending_tx = it_pending_tx->second;
-					if (check_dependencies(from, get_next_seq(from), pending_tx)) {
-						std::cout << "Moving " << next_tx_key << " from pending transactions to mempool" << std::endl << flush;
-						mempool.push_back(pending_tx); 
-						pending_transactions.erase(next_tx_key);
-					} 
-				}
+				notify_dependencies(from, seq);
 				
 				aged_transactions[it->first] = { it->second.full_tx, it->second.time, get_now() };
 				it = aging_transactions.erase(it);
-				//std::cout << "After updating next_seq of " << from << ": " << get_next_seq(from) << std::endl << flush;
-
 			} else
-			{ /*
-				vector<string> s = split(it->first, ":");
-				string from = s[0];
-				string seq = s[1];
-				std::cout << "Transaction " << from << ":" << seq << " hasn't aged enough" << std::endl << flush;*/
+			{ 
 				++it;
 			}
 		}
 
+		dependencies_mtx.unlock();
 		mempool_mtx.unlock(); 
 		pending_transactions_mtx.unlock(); 
 		next_seqs_mtx.unlock(); 	
@@ -451,9 +528,12 @@ void aging_monitor()
 	}
 }
 
+
+
 void transaction_creator()
 {
 	//uint64_t seqN = 0; // no persistance but okay, also maybe use uint64_t or smth
+	boost::this_thread::sleep(boost::posix_time::milliseconds(15000));
 
 	while (1)
 	{
@@ -461,6 +541,7 @@ void transaction_creator()
 		aging_transactions_mtx.lock();
 		next_seqs_mtx.lock();
 		mempool_mtx.lock();
+
 		vector<string> transactions;
 		for (int i = 0; i < TRANSACTION_THROUGHPUT_EACH_NODE; i++) //careful with transaction size, are there restrictinons?
 		{ // tx/s per node
@@ -468,8 +549,9 @@ void transaction_creator()
 			string seq = to_string(get_next_seq(from));
 			string to = get_random_address(ADDRESS_SIZE_IN_DWORDS);
 			string amount = to_string(rng());
+			string dependency = get_dependency(to);
 
-			string tx = from + ":" + seq + ":" + to + ":" + amount;
+			string tx = from + ":" + seq + ":" + to + ":" + amount + ":" + dependency;
 			string sign = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; //sign_message(tx); //maybe ignore signing
 
 			string full_tx = tx + ":" + sign;
