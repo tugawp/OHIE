@@ -221,7 +221,7 @@ string create__full_block( uint32_t chain_id, BlockHash hash, tcp_server *ser, B
         string tx;
         if ( NULL != b && b->nb->no_txs > 0 ){
             for( int j=0; j< b->nb->no_txs; j++){
-              tx = create_one_transaction(b->nb->rank);
+              tx = get_one_transaction(b->nb->rank);
               s += tx + "\n";
             }
         }

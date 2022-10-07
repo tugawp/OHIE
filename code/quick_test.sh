@@ -29,6 +29,7 @@ rm -rf _Blocks
 rm -rf _Hashes
 rm -rf _Pings
 rm -rf _Sessions
+rm -rf _Transactions
 
 # remove previous outputs
 rm outputnode*

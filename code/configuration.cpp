@@ -63,7 +63,7 @@ uint32_t RUN_NETWORK_EACH_MILLISECONDS = 20;
 //
 uint32_t MAX_ASK_BLOCKS = 4;
 // HDD 
-uint32_t WRITE_BLOCKS_TO_HDD = 0;
+uint32_t WRITE_BLOCKS_TO_HDD = 1;
 uint32_t WRITE_SESSIONS_TO_HDD = 0;
 uint32_t WRITE_HASH_TO_HDD=0;
 // PRINTING
@@ -99,7 +99,7 @@ uint32_t UPDATE_COMMITED_TIME_EACH_MILLISECONDS=500;
 //
 bool fake_transactions = false;
 //
-uint32_t T_DISCARD[6] = { 6 };
+uint32_t T_DISCARD[6] = { 6 }; // was 6
 
 
 set<string> KNOWN_VARS = {

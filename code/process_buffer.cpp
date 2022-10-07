@@ -26,7 +26,6 @@ SOFTWARE.
 
 extern mt19937 rng;
 extern boost::thread *mythread;
-extern unsigned long time_of_start;
 extern string my_ip;
 extern uint32_t my_port; 
 
@@ -318,7 +317,7 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
 
       }
       
-      else if( sp[0] == "#full_block" ){
+      else if( sp[0] == "#full_block" ){ // delays here
 
           string sender_ip;
           uint32_t sender_port;
@@ -333,7 +332,7 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
             if ( p+2 == positions.size() ) break;
             continue;
           }
-        
+
           // Make sure the block does not exist
           if( bc->have_full_block( chain_id, hash) ){
             continue; 
@@ -343,7 +342,6 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
               printf("\033[32;1m%s:%d NICE FULL BLOCKS chain:block %3d : %lx  \n\033[0m", sender_ip.c_str(), sender_port, chain_id, hash);
               fflush(stdout);
           }
-
 
           if ( txs.size() >= 0  ){
 
@@ -370,7 +368,7 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
               while ( all_good &&  ((pos  = txs.find("\n",pos+1)) >= 0) ){
 
                 string l = txs.substr(prevpos, pos-prevpos);
-                if( fake_transactions ||  verify_transaction_from_block(l, b->nb->rank, last_rank) ){ 
+                if(verify_transaction_from_block(l, b->nb->rank, last_rank) ){ 
                   tot_transactions ++;
                   txs_list.push_back(l);
                 }
@@ -448,7 +446,9 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
                     fflush(stdout);
                   }
 
+                  
                   update_transactions_block(txs_list, hash);
+                  
 
                   // Store into the file
                   if ( WRITE_BLOCKS_TO_HDD ){
@@ -476,6 +476,7 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
                     fflush(stdout);
                   }
               }
+
           }     
       } else if(sp[0] == "#transactions") {
         vector<string> transactions;
@@ -483,20 +484,20 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
           if (p+2 == positions.size()) break;
           continue;
         }
-        //printf("but only returned %ld transactions\n", transactions.size());
-        
-        add_transactions(transactions);
-        // assume each node talks to all nodes, otherwise we would 
-        // broadcast the new transactions
+        vector<string> added_transactions = add_transactions(transactions);
+
+        bool pr = true;
+        string sender_ip = sp[1];
+        uint32_t sender_port = safe_stoi(sp[2], pr);
+        if (pr && added_transactions.size() > 0)
+          ser->write_to_all_peers_except(create__transactions(added_transactions), sender_ip, sender_port); 
+          
       } 
+
   }
 
   if( positions.size() > 1 &&  positions[p] < m.size())
       m = m.substr( positions[p] );
   else
       m = "";
-
-
-
-
 }

@@ -371,6 +371,16 @@ void tcp_server::write_to_all_peers(string message )
 
 }
 
+void tcp_server::write_to_all_peers_except(string message, string peer_ip, uint32_t peer_port)
+{
+  // Write to all peers except one
+  for( int i=0; i<peers.size(); i++){
+
+      if( peers[i]._strand != NULL && !(peers[i].ip == peer_ip && peers[i].port == peer_port))
+          peers[i]._strand->post( boost::bind(&tcp_server::strand_write, this, message, i));
+  }
+}
+
 
 
 void tcp_server::write_to_one_peer(string peer_ip, uint32_t peer_port, string message )
@@ -576,7 +586,7 @@ void tcp_server::run_network()
         bytes_received/(1024.0*1024), bytes_received/(1024.0*1024)/secs, bytes_received/(1024.0*1024)/secs * 3600/1000, 
         bytes_txs_received/(1024.0*1024)/secs, bytes_txs_received/(1024.0*1024)/secs * 3600/1000);
       
-      printf("\n=============== [TXS       :] Verified:  %8ld     Rate: %.0f txs/s     Aging: %d     Promised: %d\n", no_verified_transactions, no_verified_transactions/ secs, get_aging_count(), get_promised_count());
+      printf("\n=============== [TXS       :] Verified:  %8ld     Rate: %.0f txs/s     Aging: %d     Promised: %d     Unsuccessfully aged: %d     Pending: %d     Mempool: %d\n", no_verified_transactions, no_verified_transactions/ secs, get_aging_count(), get_promised_count(), get_aged_count(), get_pending_count(), get_mempool_count());
 
       bc->specific_print_blockchain();
       last_print_blockchain = time_of_now;
@@ -708,6 +718,11 @@ void tcp_server::send_block_to_one_peer(string sender_ip, uint32_t sender_port, 
 string tcp_server::get_server_folder()
 {
   return folder_blockchain+"/_"+my_ip+"_"+to_string(my_port);
+}
+
+string tcp_server::get_transactions_file() 
+{
+  return "_Transactions/" + my_ip + "_ " + to_string(my_port);
 }
 
 

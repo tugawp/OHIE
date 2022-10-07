@@ -85,11 +85,14 @@ public:
     void send_block_to_peers(network_block *nb );
     void send_block_to_one_peer(string sender_ip, uint32_t sender_port, uint32_t chain_id, BlockHash parent, BlockHash hash, block *b );
     void write_to_all_peers(string message );
+    void write_to_all_peers_except(string message, string peer_ip, uint32_t peer_port);
+    
     void write_to_one_peer(string peer_ip, uint32_t peer_port, string message );
 
     void run_network();
 
     string get_server_folder();
+    string get_transactions_file();
     void additional_verified_transaction( uint32_t add_new);
     void add_bytes_received( uint32_t br, uint32_t mbr );
 

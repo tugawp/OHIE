@@ -33,6 +33,12 @@ SOFTWARE.
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
+
+#include <cstdlib>
+#include <iostream>
+#include <stdexcept>
+#include <execinfo.h>
+
 #include <iostream>
 #include <fstream>
 #include <thread>
@@ -61,10 +67,26 @@ boost::thread *mythread;
 tcp_server *ser=NULL;
 
  
+void
+handler()
+{
+    void *trace_elems[20];
+    int trace_elem_count(backtrace( trace_elems, 20 ));
+    char **stack_syms(backtrace_symbols( trace_elems, trace_elem_count ));
+    for ( int i = 0 ; i < trace_elem_count ; ++i )
+    {
+        std::cout << stack_syms[i] << "\n";
+    }
+    free( stack_syms );
+
+    fflush(stdout);
+
+    exit(1);
+} 
 
 
 int main(int argc, char **argv) {
-
+    std::set_terminate( handler );
 
     uint32_t random_seed = (((argc > 1 && atoi(argv[1]) != 0)? atoi(argv[1]):1) * random_device()() ) * time(NULL) ;
     rng.seed( random_seed );
@@ -110,8 +132,8 @@ int main(int argc, char **argv) {
      * Create folders for Blockchains (where full blocks are stored), Sessions (where communication is stored), and Hashes(the hash of max block - 6 of chain 0). 
      * Check params.h to see how they are set
      */
-    string folders[] = {string(FOLDER_BLOCKCHAIN), string(FOLDER_SESSIONS), string(FOLDER_HASHES), string(FOLDER_PINGS), string(FOLDER_BLOCKS) };
-    for( int i=0; i<5; i++){
+    string folders[] = {string(FOLDER_BLOCKCHAIN), string(FOLDER_SESSIONS), string(FOLDER_HASHES), string(FOLDER_PINGS), string(FOLDER_BLOCKS), "_Transactions" };
+    for( int i=0; i<6; i++){
         if (boost::filesystem::is_directory(folders[i])) continue;
         boost::filesystem::path dir( folders[i].c_str());
         if(!boost::filesystem::create_directory(dir))
