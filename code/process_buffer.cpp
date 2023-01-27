@@ -317,7 +317,7 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
 
       }
       
-      else if( sp[0] == "#full_block" ){ // delays here
+      else if( sp[0] == "#full_block" ){
 
           string sender_ip;
           uint32_t sender_port;

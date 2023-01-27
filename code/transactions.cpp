@@ -28,12 +28,13 @@ SOFTWARE.
 using namespace std;
 
 bool PRINT_LOCKS = false;
-bool SAVE_TRANSACTIONS = true;
+bool SAVE_TRANSACTIONS = false;
 
 extern int64_t AT;
 extern int64_t D;
 extern uint32_t AGING_MONITOR_EACH_MILLISECONDS;
 extern uint32_t TRANSACTION_THROUGHPUT_EACH_NODE;
+extern uint32_t IDLE_START_TIME;
 extern bool BIZANTINE;
 extern tcp_server* ser;
 extern string my_ip;
@@ -342,6 +343,36 @@ void verify_transaction(string full_tx, bool* is_new)
 	}
 }
 
+string get_transaction_key(string tx) {
+	vector<string> s = split(tx, ":");
+	string from = s[0];
+	string seq = s[1];
+	string tx_key = from + ":" + seq ;
+	return tx_key;
+}
+
+void remove_from_mempool_and_pending(string tx) {
+	if (PRINT_LOCKS) { cout << "Locking pending_transactions_mtx in update_transactions_block" << endl; } pending_transactions_mtx.lock(); if (PRINT_LOCKS) { cout << "Locked pending_transactions_mtx in update_transactions_block" << endl << flush; }
+	if (PRINT_LOCKS) { cout << "Locking mempool_mtx in update_transactions_block" << endl; } mempool_mtx.lock(); if (PRINT_LOCKS) { cout << "Locked pendinmempool_mtxg_transactions_mtx in update_transactions_block" << endl << flush; }
+	string tx_key = get_transaction_key(tx);
+	//transaction_block[tx_key] = block_hash;
+	
+	// transaction is in a block, so remove from pending transactions or mempool 
+	auto it_pending_transactions = pending_transactions.find(tx_key);
+	if (it_pending_transactions != pending_transactions.end()) {
+		pending_transactions.erase(it_pending_transactions);
+		return; // if it's in pending transactions then it's not in mempool
+	}
+
+	auto it_mempool = std::find_if(mempool.begin(), mempool.end(), [tx_key](string tx) { return get_transaction_key(tx) == tx_key; });
+	if (it_mempool != mempool.end()) {
+		std::cout << "WORKS" << std::endl << flush;
+		mempool.erase(it_mempool);
+	}
+	mempool_mtx.unlock(); if (PRINT_LOCKS) { cout << "Unlocked mempool_mtx in update_transactions_block" << endl << flush; }
+	pending_transactions_mtx.unlock(); if (PRINT_LOCKS) { cout << "Unlocked pending_transactions_mtx in update_transactions_block" << endl << flush; }
+}
+
 bool verify_transaction_from_block(string full_tx, uint32_t rank, uint32_t last_rank)
 // rank é o rank do bloco da transação, e last rank o último rank do último bloco dessa cadeia
 {
@@ -378,6 +409,8 @@ bool verify_transaction_from_block(string full_tx, uint32_t rank, uint32_t last_
 		// se estiver na pending ou mempool remover de lá
 		// se não for conhecida por a envelhecer
 
+		remove_from_mempool_and_pending(tx);
+
 		if (false && !verify_message(tx, sign))
 			return false;
 
@@ -403,13 +436,7 @@ bool verify_transaction_from_block(string full_tx, uint32_t rank, uint32_t last_
 	}
 }
 
-string get_transaction_key(string tx) {
-	vector<string> s = split(tx, ":");
-	string from = s[0];
-	string seq = s[1];
-	string tx_key = from + ":" + seq ;
-	return tx_key;
-}
+
 
 
 void update_transactions_block(list<string> txs, BlockHash block_hash) {
@@ -449,6 +476,7 @@ void update_transactions_block(list<string> txs, BlockHash block_hash) {
 	pending_transactions_mtx.unlock(); if (PRINT_LOCKS) { cout << "Unlocked pending_transactions_mtx in update_transactions_block" << endl << flush; }
 	//transaction_block_mtx.unlock(); if (PRINT_LOCKS) { cout << "Unlocked transaction_block_mtx" << endl << flush; }  
 }
+
 
 int get_aging_count()
 {
@@ -542,6 +570,7 @@ void promise_transaction(string full_tx, string from, uint64_t seq_N, int64_t ag
 // Tasks
 void aging_monitor()
 {
+	boost::this_thread::sleep(boost::posix_time::milliseconds(IDLE_START_TIME));
 	while (1)
 	{
 		int64_t start = get_now();
@@ -593,7 +622,7 @@ void aging_monitor()
 void transaction_creator()
 {
 	//uint64_t seqN = 0; // no persistance but okay, also maybe use uint64_t or smth
-	boost::this_thread::sleep(boost::posix_time::milliseconds(60000));
+	boost::this_thread::sleep(boost::posix_time::milliseconds(IDLE_START_TIME));
 
 	map<string, uint64_t> next_new_seqs;
 	while (1)
