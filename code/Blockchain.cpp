@@ -860,7 +860,7 @@ void Blockchain::set_block_full( uint32_t chain_id, BlockHash hash, string misc 
 	        }
 	        */
 	        if ( STORE_BLOCKS && (hash % BLOCKS_STORE_FREQUENCY) == 0  ){
-				string filename =  string(FOLDER_BLOCKS)+"/"+my_ip+"-"+to_string(my_port);
+				string filename =  string(FOLDER_BLOCKS)+"/"+my_ip_or_hostname+"-"+to_string(my_port);
 	            ofstream file;
 	            file.open(filename, std::ios_base::app); 
 	            file << "0 " << hex << hash << dec << " " << (bz->nb->time_received - bz->nb->time_mined) << endl;
@@ -908,7 +908,7 @@ void Blockchain::update_blocks_commited_time()
 						partially_latency[j] += t->nb->time_partial[j] - t->nb->time_mined;
 
 				        if ( STORE_BLOCKS && (t->hash % BLOCKS_STORE_FREQUENCY) == 0  ){
-							string filename =  string(FOLDER_BLOCKS)+"/"+my_ip+"-"+to_string(my_port);
+							string filename =  string(FOLDER_BLOCKS)+"/"+my_ip_or_hostname+"-"+to_string(my_port);
 				            ofstream file;
 				            file.open(filename, std::ios_base::app); 
 				            file << "1 " << hex << t->hash << dec << " " << (t->nb->time_partial[j] - t->nb->time_mined) << " " << j << endl;
@@ -979,7 +979,7 @@ void Blockchain::update_blocks_commited_time()
 						commit_block(t->hash);
 						
 						if ( STORE_BLOCKS && (t->hash % BLOCKS_STORE_FREQUENCY) == 0  ){
-							string filename =  string(FOLDER_BLOCKS)+"/"+my_ip+"-"+to_string(my_port);
+							string filename =  string(FOLDER_BLOCKS)+"/"+my_ip_or_hostname+"-"+to_string(my_port);
 				            ofstream file;
 				            file.open(filename, std::ios_base::app); 
 				            file << "2 " << hex << t->hash << dec << " " << (t->nb->time_commited[j] - t->nb->time_mined) << " " << j <<  endl;

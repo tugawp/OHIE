@@ -11,7 +11,7 @@
 
 using namespace std;
 
-extern string my_ip;
+extern string my_ip_or_hostname;
 extern uint32_t my_port; 
 
 

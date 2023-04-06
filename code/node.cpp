@@ -59,7 +59,7 @@ using namespace std::chrono;
 
 
 Blockchain *bc ;
-string my_ip="badip";
+string my_ip_or_hostname="badip";
 uint32_t my_port;
 mt19937 rng;
 unsigned long time_of_start;
@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
      */
     string ip = get_my_local_ip();    
     uint32_t port = atoi(argv[1]);
-    my_ip = ip; 
+    my_ip_or_hostname = ip; 
     my_port = port;
 
     /*
@@ -110,9 +110,12 @@ int main(int argc, char **argv) {
      */
     if ( argc >= 4){
         string some_ip = string(argv[3]);
-        if( split(some_ip,".").size() == 4 ){
-            ip = my_ip = some_ip;
-            cout << "Provided public ip:"<<my_ip<<":"<<endl;
+        my_ip_or_hostname = some_ip;
+        if( split(some_ip, ".").size() == 4){
+            ip = some_ip;
+            cout << "Provided public ip:"<<my_ip_or_hostname<<":"<<endl;
+        } else {
+            cout << "Provided public hostname:"<<my_ip_or_hostname<<":"<<endl;
         }
     }
 
@@ -207,9 +210,23 @@ int main(int argc, char **argv) {
         int p = l.find(":");
         if( p > 0 ){
             Peer pr;
-            pr.ip = l.substr(0,p);
+            
+            string ip_or_hostname = l.substr(0,p);
+
+            if (split(ip_or_hostname,".").size() == 1) {
+                //it's a hostname
+                tcp::resolver resolver(io_service);
+                tcp::resolver::query query(ip_or_hostname, "8080");
+                tcp::resolver::iterator iter = resolver.resolve(query);
+                tcp::endpoint endpoint = iter->endpoint();
+                pr.ip = endpoint.address().to_string();
+                cout << "Converted " << ip_or_hostname << " to " << pr.ip << endl;
+            } else {
+                pr.ip = ip_or_hostname;
+            }
+
             pr.port= atoi(l.substr(p+1,  l.length()).c_str());
-            if ( pr.ip != my_ip && pr.ip != private_ip || pr.port != port  )
+            if ( ip_or_hostname != my_ip_or_hostname && pr.ip != private_ip || pr.port != port  )
                 tmp.push_back(pr);
         }
     }
@@ -218,7 +235,7 @@ int main(int argc, char **argv) {
     while( tr < 10000 && tmp.size() > 0  && server.no_peers() < MAX_PEERS ){
 
         int t = rng() % tmp.size();
-        if ( tmp[t].ip != my_ip || tmp[t].port != port  ){
+        if ( tmp[t].ip != my_ip_or_hostname || tmp[t].port != port  ){
             server.add_peer( tmp[t], false );
             tmp.erase(tmp.begin() + t);
         }

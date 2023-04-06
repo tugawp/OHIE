@@ -37,7 +37,7 @@ extern uint32_t TRANSACTION_THROUGHPUT_EACH_NODE;
 extern uint32_t IDLE_START_TIME;
 extern bool BIZANTINE;
 extern tcp_server* ser;
-extern string my_ip;
+extern string my_ip_or_hostname;
 extern uint32_t my_port;
 extern uint32_t CLIENTS_PER_NODE;
 string my_address;
@@ -153,7 +153,7 @@ string get_random_address(uint32_t size_in_dwords)
 string get_random_from_address(uint32_t size_in_dwords) //might be here
 {
 	int client_id = rng() % CLIENTS_PER_NODE; 
-	string address = my_ip + to_string(my_port) + to_string(client_id);
+	string address = my_ip_or_hostname + to_string(my_port) + to_string(client_id);
 	for (int i = 0; (size_in_dwords * 8 - address.size()); i++)
 		address += "0";
 	return address;
@@ -634,7 +634,7 @@ void transaction_creator()
 		if (PRINT_LOCKS) { cout << "Locking mempool_mtx in transaction_creator" << endl; } mempool_mtx.lock(); if (PRINT_LOCKS) { cout << "Locked mempool_mtx in transaction_creator" << endl << flush; }
 
 		vector<string> transactions;
-		for (int i = 0; i < TRANSACTION_THROUGHPUT_EACH_NODE; i++) //careful with transaction size, are there restrictinons?
+		for (int i = 0; i < TRANSACTION_THROUGHPUT_EACH_NODE; i++) //careful with transaction size, are there restrictions?
 		{ // tx/s per node
 			string from = get_random_from_address(ADDRESS_SIZE_IN_DWORDS);
 			uint64_t seq_N = next_new_seqs[from];

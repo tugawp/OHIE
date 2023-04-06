@@ -26,7 +26,7 @@ SOFTWARE.
 
 extern mt19937 rng;
 extern boost::thread *mythread;
-extern string my_ip;
+extern string my_ip_or_hostname;
 extern uint32_t my_port; 
 
 
@@ -105,7 +105,7 @@ void process_buffer( string &m, tcp_server *ser, Blockchain *bc )
 
           // Add the file of pings
           unsigned long time_of_now = std::chrono::system_clock::now().time_since_epoch() /  std::chrono::milliseconds(1);
-          string filename =  string(FOLDER_PINGS)+"/"+my_ip+to_string(my_port);
+          string filename =  string(FOLDER_PINGS)+"/"+my_ip_or_hostname+to_string(my_port);
           ofstream file;
           file.open(filename, std::ios_base::app);
           file << mode << " " << tt << " " << (dnext + 1) << " " << ((time_of_now > tsec) ? ( time_of_now - tsec ) : 0) << endl;

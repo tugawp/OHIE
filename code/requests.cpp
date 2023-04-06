@@ -23,7 +23,7 @@ SOFTWARE.
 #include "requests.h"
 #include "misc.h"
 
-extern string my_ip;
+extern string my_ip_or_hostname;
 extern uint32_t my_port; 
 
     
@@ -32,7 +32,7 @@ extern uint32_t my_port;
 
 string create__ask_block( uint32_t chain_id, BlockHash hash, uint32_t my_depth, uint32_t hash_depth )
 {
-	  string s = "#ask_block,"+my_ip+","+to_string(my_port)+","+to_string(chain_id)+","+to_string(hash);
+	  string s = "#ask_block,"+my_ip_or_hostname+","+to_string(my_port)+","+to_string(chain_id)+","+to_string(hash);
 	  s += ","+ to_string( ( my_depth >= hash_depth)? 1:(hash_depth - my_depth) );
 	  return s;
 }
@@ -64,7 +64,7 @@ bool parse__ask_block( vector<std::string> sp, map<string,int> &passed, string &
 
 string create__process_block( network_block *nb )
 {
-    string s = "#process_block,"+my_ip+","+to_string(my_port)+","+to_string(nb->chain_id)+","+to_string(nb->parent)+","+to_string(nb->hash)+",";
+    string s = "#process_block,"+my_ip_or_hostname+","+to_string(my_port)+","+to_string(nb->chain_id)+","+to_string(nb->parent)+","+to_string(nb->hash)+",";
     s += to_string(nb->no_txs) + ",";
     s += to_string(nb->depth) + ",";
     s += to_string(nb->rank) + ",";
@@ -111,7 +111,7 @@ bool parse__process_block( vector<std::string> sp, map<string,int> &passed, stri
 
 string create__got_full_block(uint32_t chain_id, BlockHash hash )
 {
-	   string s = "#got_full_block,"+my_ip+","+to_string(my_port)+","+to_string(chain_id)+","+to_string(hash);
+	   string s = "#got_full_block,"+my_ip_or_hostname+","+to_string(my_port)+","+to_string(chain_id)+","+to_string(hash);
 	   return s;
 }
 
@@ -140,7 +140,7 @@ bool parse__got_full_block( vector<std::string> sp, map<string,int> &passed, str
 
 string create__have_full_block( uint32_t chain_id, BlockHash hash)
 {
-  		string s = "#have_full_block,"+my_ip+","+to_string(my_port)+","+to_string(chain_id)+","+to_string(hash);
+  		string s = "#have_full_block,"+my_ip_or_hostname+","+to_string(my_port)+","+to_string(chain_id)+","+to_string(hash);
   		return s;
 }
 bool parse__have_full_block( vector<std::string> sp, map<string,int> &passed, string &sender_ip, uint32_t &sender_port, uint32_t &chain_id, BlockHash &hash  )
@@ -169,7 +169,7 @@ bool parse__have_full_block( vector<std::string> sp, map<string,int> &passed, st
 
 string create__ask_full_block( uint32_t chain_id, BlockHash hash)
 {
-	  string s = "#ask_full_block,"+my_ip+","+to_string(my_port)+","+to_string(chain_id)+","+to_string(hash);
+	  string s = "#ask_full_block,"+my_ip_or_hostname+","+to_string(my_port)+","+to_string(chain_id)+","+to_string(hash);
 	  return s;
 }
 bool parse__ask_full_block( vector<std::string> sp, map<string,int> &passed, string &sender_ip, uint32_t &sender_port, uint32_t &chain_id, BlockHash &hash  )
@@ -197,7 +197,7 @@ bool parse__ask_full_block( vector<std::string> sp, map<string,int> &passed, str
 
 string create__full_block( uint32_t chain_id, BlockHash hash, tcp_server *ser, Blockchain *bc )
 {
-    string s = "#full_block,"+my_ip+","+to_string(my_port)+","+to_string(chain_id)+","+to_string(hash)+",";
+    string s = "#full_block,"+my_ip_or_hostname+","+to_string(my_port)+","+to_string(chain_id)+","+to_string(hash)+",";
 
     block * b = bc->find_block_by_hash_and_chain_id( hash, chain_id ); 
     if( WRITE_BLOCKS_TO_HDD ){
@@ -287,7 +287,7 @@ bool parse__full_block( vector<std::string> sp, map<string,int> &passed, string 
 
 string create__ping( string tt, uint32_t dnext, unsigned long tsec, int mode)
 {
-    string s = "#ping,"+my_ip+","+to_string(my_port)+","+tt+","+to_string(dnext)+","+to_string(tsec)+","+to_string(mode);
+    string s = "#ping,"+my_ip_or_hostname+","+to_string(my_port)+","+tt+","+to_string(dnext)+","+to_string(tsec)+","+to_string(mode);
     return s;
 }
 
@@ -315,7 +315,7 @@ bool parse__ping( vector<std::string> sp, map<string,int> &passed, string &sende
 
 
 string create__transactions(vector<string> transactions) {
-  return "#transactions," + my_ip + "," + to_string(my_port) + "," +
+  return "#transactions," + my_ip_or_hostname + "," + to_string(my_port) + "," +
          boost::algorithm::join(transactions, ";");
 }
 
