@@ -1,0 +1,23 @@
+services:
+  _node_build:
+    build: .
+    image: ohie
+    command: ["echo", "Build completed."]
+  node1:
+    depends_on: 
+      - _node_build
+    image: ohie
+    container_name: node1
+    command: [ "./Node", "8080", "_peers_docker", "node1:8080" ]
+  node2:
+    depends_on: 
+      - _node_build
+    image: ohie
+    container_name: node2
+    command: [ "./Node", "8080", "_peers_docker", "node2:8080" ]
+  node3:
+    depends_on: 
+      - _node_build
+    image: ohie
+    container_name: node3
+    command: [ "./Node", "8080", "_peers_docker", "node3:8080" ]

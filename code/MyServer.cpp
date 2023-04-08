@@ -220,6 +220,8 @@ void tcp_server::add_peer( Peer p, bool is_connected)
         }
         peers.push_back(p);
 
+        cout << "---------------> ADDED PEER " << p.ip << endl << flush;
+
         // Make the hash table of peers (used later to avoid connecting such peers as blind peers)
         speers.insert( make_pair( key , 1 ) );
     }
@@ -234,7 +236,7 @@ void tcp_server::add_indirect_peer_if_doesnt_exist( string p)
             Peer pr;
             pr.ip = p.substr(0,pos);
             pr.port= atoi(p.substr(pos+1,  p.length()).c_str());
-            add_peer( pr, false );
+            add_peer( pr, false ); cout << "ADDED PEER 1..." << endl;
         }
   }
 }
@@ -756,4 +758,19 @@ bool tcp_server::add_ping( string tt, int dnext, bool overwrite )
 
   pings.insert( make_pair(tt,dnext) );
   return true;
+}
+
+string tcp_server::get_ip(string ip_or_hostname) {
+  if (split(ip_or_hostname,".").size() == 1) {
+    //it's a hostname
+    tcp::resolver resolver((boost::asio::io_service &) acceptor_.get_executor().context());
+    tcp::resolver::query query(ip_or_hostname, "8080");
+    tcp::resolver::iterator iter = resolver.resolve(query);
+    tcp::endpoint endpoint = iter->endpoint();
+    string ip = endpoint.address().to_string();
+    //cout << "Converted " << ip_or_hostname << " to " << ip << endl;
+    return ip;
+  } else {
+    return ip_or_hostname;
+  }
 }

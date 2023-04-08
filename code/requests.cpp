@@ -25,8 +25,7 @@ SOFTWARE.
 
 extern string my_ip_or_hostname;
 extern uint32_t my_port; 
-
-    
+extern tcp_server* ser;
 
 
 
@@ -43,7 +42,7 @@ bool parse__ask_block( vector<std::string> sp, map<string,int> &passed, string &
 	if ( key_present( sp[0]+sp[1]+sp[2]+sp[3]+sp[4], passed ) ) return false;
 
     bool pr = true;
-    sender_ip = sp[1]; 
+    sender_ip = ser->get_ip(sp[1]); 
     sender_port = safe_stoi(sp[2], pr);
     chain_id = safe_stoi(sp[3], pr);
     hash = safe_stoull( sp[4], pr );
@@ -84,7 +83,7 @@ bool parse__process_block( vector<std::string> sp, map<string,int> &passed, stri
 
 
     bool pr = true;
-    sender_ip         = sp[1];
+    sender_ip         = ser->get_ip(sp[1]);
     sender_port       = safe_stoi(    sp[ 2], pr);
     nb.chain_id       = safe_stoi(    sp[ 3], pr);
     nb.parent         = safe_stoull(  sp[ 4], pr );
@@ -122,7 +121,7 @@ bool parse__got_full_block( vector<std::string> sp, map<string,int> &passed, str
 	if ( key_present( sp[0]+sp[1]+sp[2]+sp[3]+sp[4], passed ) ) return false;
 
     bool pr = true;
-    sender_ip = sp[1]; 
+    sender_ip = ser->get_ip(sp[1]); 
     sender_port = safe_stoi(sp[2], pr);
     chain_id = safe_stoi(sp[3], pr);
     hash = safe_stoull( sp[4], pr );
@@ -150,7 +149,7 @@ bool parse__have_full_block( vector<std::string> sp, map<string,int> &passed, st
 	if ( key_present( sp[0]+sp[1]+sp[2]+sp[3]+sp[4], passed ) ) return false;
 
     bool pr = true;
-    sender_ip = sp[1]; 
+    sender_ip = ser->get_ip(sp[1]); 
     sender_port = safe_stoi(sp[2], pr);
     chain_id = safe_stoi(sp[3], pr);
     hash = safe_stoull( sp[4], pr );
@@ -179,7 +178,7 @@ bool parse__ask_full_block( vector<std::string> sp, map<string,int> &passed, str
 	if ( key_present( sp[0]+sp[1]+sp[2]+sp[3]+sp[4], passed ) ) return false;
 
     bool pr = true;
-    sender_ip = sp[1]; 
+    sender_ip = ser->get_ip(sp[1]); 
     sender_port = safe_stoi(sp[2], pr);
     chain_id = safe_stoi(sp[3], pr);
     hash = safe_stoull( sp[4], pr );
@@ -258,7 +257,7 @@ bool parse__full_block( vector<std::string> sp, map<string,int> &passed, string 
   if ( key_present( sp[0]+sp[1]+sp[2]+sp[3]+sp[4], passed ) ) return false;
 
     bool pr = true;
-    sender_ip = sp[1];
+    sender_ip = ser->get_ip(sp[1]);
     sender_port = safe_stoi(sp[2], pr);
     chain_id = safe_stoi(sp[3], pr);
     hash = safe_stoull( sp[4], pr);
@@ -297,7 +296,7 @@ bool parse__ping( vector<std::string> sp, map<string,int> &passed, string &sende
   if ( key_present( sp[0]+sp[1]+sp[2], passed ) ) return false;
 
     bool pr = true;
-    sender_ip = sp[1];
+    sender_ip = ser->get_ip(sp[1]);
     sender_port = safe_stoi(sp[2], pr);
     tt = sp[3]; 
     dnext= safe_stoi(sp[4], pr);

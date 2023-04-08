@@ -8,4 +8,4 @@ COPY ./ ./
 
 RUN make
 
-ENTRYPOINT [ "./Node"]
+EXPOSE 8080

@@ -34,11 +34,6 @@ SOFTWARE.
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include <cstdlib>
-#include <iostream>
-#include <stdexcept>
-#include <execinfo.h>
-
 #include <iostream>
 #include <fstream>
 #include <thread>
@@ -66,28 +61,7 @@ unsigned long time_of_start;
 boost::thread *mythread;
 tcp_server *ser=NULL;
 
- 
-void
-handler()
-{
-    void *trace_elems[20];
-    int trace_elem_count(backtrace( trace_elems, 20 ));
-    char **stack_syms(backtrace_symbols( trace_elems, trace_elem_count ));
-    for ( int i = 0 ; i < trace_elem_count ; ++i )
-    {
-        std::cout << stack_syms[i] << "\n";
-    }
-    free( stack_syms );
-
-    fflush(stdout);
-
-    exit(1);
-} 
-
-
 int main(int argc, char **argv) {
-    std::set_terminate( handler );
-
     uint32_t random_seed = (((argc > 1 && atoi(argv[1]) != 0)? atoi(argv[1]):1) * random_device()() ) * time(NULL) ;
     rng.seed( random_seed );
 
@@ -110,10 +84,10 @@ int main(int argc, char **argv) {
      */
     if ( argc >= 4){
         string some_ip = string(argv[3]);
-        my_ip_or_hostname = some_ip;
+        my_ip_or_hostname = split(some_ip, ":")[0];
         if( split(some_ip, ".").size() == 4){
             ip = some_ip;
-            cout << "Provided public ip:"<<my_ip_or_hostname<<":"<<endl;
+            cout << "Provided public ip:"<< my_ip_or_hostname << endl;
         } else {
             cout << "Provided public hostname:"<<my_ip_or_hostname<<":"<<endl;
         }
@@ -213,17 +187,7 @@ int main(int argc, char **argv) {
             
             string ip_or_hostname = l.substr(0,p);
 
-            if (split(ip_or_hostname,".").size() == 1) {
-                //it's a hostname
-                tcp::resolver resolver(io_service);
-                tcp::resolver::query query(ip_or_hostname, "8080");
-                tcp::resolver::iterator iter = resolver.resolve(query);
-                tcp::endpoint endpoint = iter->endpoint();
-                pr.ip = endpoint.address().to_string();
-                cout << "Converted " << ip_or_hostname << " to " << pr.ip << endl;
-            } else {
-                pr.ip = ip_or_hostname;
-            }
+            pr.ip = server.get_ip(ip_or_hostname);
 
             pr.port= atoi(l.substr(p+1,  l.length()).c_str());
             if ( ip_or_hostname != my_ip_or_hostname && pr.ip != private_ip || pr.port != port  )

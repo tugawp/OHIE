@@ -98,6 +98,10 @@ public:
 
     bool add_ping( string tt, int dnext, bool overwrite );
 
+    string get_ip(string ip_or_hostname);
+    
+
+
 
 
 private:

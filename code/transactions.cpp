@@ -366,7 +366,7 @@ void remove_from_mempool_and_pending(string tx) {
 
 	auto it_mempool = std::find_if(mempool.begin(), mempool.end(), [tx_key](string tx) { return get_transaction_key(tx) == tx_key; });
 	if (it_mempool != mempool.end()) {
-		std::cout << "WORKS" << std::endl << flush;
+		//std::cout << "WORKS" << std::endl << flush;
 		mempool.erase(it_mempool);
 	}
 	mempool_mtx.unlock(); if (PRINT_LOCKS) { cout << "Unlocked mempool_mtx in update_transactions_block" << endl << flush; }
@@ -647,6 +647,9 @@ void transaction_creator()
 			string sign = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; //sign_message(tx); //maybe ignore signing
 
 			string full_tx = tx + ":" + sign;
+			
+			
+
 			transactions.push_back(full_tx); //change create one transaction to use node id
 
 			string tx_key = from + ":" + seq;
