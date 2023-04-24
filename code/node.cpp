@@ -47,10 +47,12 @@ SOFTWARE.
 #include "configuration.h"
 #include "misc.h"
 #include "transactions.h"
+#include <random>
 
 using boost::asio::ip::tcp;
 using namespace std;
 using namespace std::chrono;
+extern uint32_t IDLE_START_TIME;
 
 
 Blockchain *bc ;
@@ -94,11 +96,19 @@ int main(int argc, char **argv) {
     }
 
     /*
-     * If fourth argument is provided, then it is the private IP
+    * If fourth argument is provided then it is the number of peers
+    */
+   int number_of_peers = 0;
+   if (argc >= 5) {
+    number_of_peers = stoi(argv[4]);
+   }
+
+    /*
+     * If fifth argument is provided, then it is the private IP
      */
     string private_ip = "";
-    if ( argc >= 5){
-        string some_ip = string(argv[4]);
+    if ( argc >= 6){
+        string some_ip = string(argv[5]);
         if( split(some_ip,".").size() == 4 ){
             private_ip = some_ip;
             cout << "Provided private ip:"<<private_ip<<":"<<endl;
@@ -172,6 +182,7 @@ int main(int argc, char **argv) {
         exit(3);
     } 
 
+    boost::this_thread::sleep(boost::posix_time::milliseconds(10000)); // wait for nodes to launch
 
     /*
      * Peers
@@ -226,23 +237,21 @@ int main(int argc, char **argv) {
         infile2.close();
     }
 
-
     /*
-     * Start the second (mining) thread
+     * Start the mining threads
      */
     boost::thread t1(miner, bc);
     mythread = &t1;
-
+    boost::thread t{aging_monitor};
+    boost::thread t2{transaction_creator};
 
     /*
      * Start the server
      */
-
-    boost::thread t{aging_monitor};
-    boost::thread t2{transaction_creator};
     server.run_network();
-    time_of_start = std::chrono::system_clock::now().time_since_epoch() /  std::chrono::milliseconds(1);
+    time_of_start = (std::chrono::system_clock::now().time_since_epoch() + boost::posix_time::milliseconds(IDLE_START_TIME)) /  std::chrono::milliseconds(1);
     io_service.run();
+
 
 
     return 0;

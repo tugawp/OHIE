@@ -21,3 +21,45 @@ services:
     image: ohie
     container_name: node3
     command: [ "./Node", "8080", "_peers_docker", "node3:8080" ]
+  node4:
+    depends_on: 
+      - _node_build
+    image: ohie
+    container_name: node4
+    command: [ "./Node", "8080", "_peers_docker", "node4:8080" ]
+  node5:
+    depends_on: 
+      - _node_build
+    image: ohie
+    container_name: node5
+    command: [ "./Node", "8080", "_peers_docker", "node5:8080" ]
+  node6:
+    depends_on: 
+      - _node_build
+    image: ohie
+    container_name: node6
+    command: [ "./Node", "8080", "_peers_docker", "node6:8080" ]
+  node7:
+    depends_on: 
+      - _node_build
+    image: ohie
+    container_name: node7
+    command: [ "./Node", "8080", "_peers_docker", "node7:8080" ]
+  node8:
+    depends_on: 
+      - _node_build
+    image: ohie
+    container_name: node8
+    command: [ "./Node", "8080", "_peers_docker", "node8:8080" ]
+  node9:
+    depends_on: 
+      - _node_build
+    image: ohie
+    container_name: node9
+    command: [ "./Node", "8080", "_peers_docker", "node9:8080" ]
+  node10:
+    depends_on: 
+      - _node_build
+    image: ohie
+    container_name: node10
+    command: [ "./Node", "8080", "_peers_docker", "node10:8080" ]

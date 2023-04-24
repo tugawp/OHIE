@@ -124,9 +124,13 @@ set<string> KNOWN_VARS = {
     "STORE_HASH_FREQ","STORE_HASH_MINUS", 
     "PING_MIN_WAIT","PING_MAX_WAIT","PING_REPEAT",
     "STORE_BLOCKS","BLOCKS_STORE_FREQUENCY", 
-    "NO_DISCARD_LOCAL","UPDATE_COMMITED_TIME_EACH_MILLISECONDS"
-
-
+    "NO_DISCARD_LOCAL","UPDATE_COMMITED_TIME_EACH_MILLISECONDS",
+	"TRANSACTION_THROUGHPUT_EACH_NODE",
+	"IDLE_START_TIME",
+	"AT",
+	"D",
+	"AGING_MONITOR_EACH_MILLISECONDS",
+	"CLIENTS_PER_NODE"
 };
 
 
@@ -190,6 +194,12 @@ void set_configuration(string filepath)
             else if(vname == "BLOCKS_STORE_FREQUENCY" ) BLOCKS_STORE_FREQUENCY = vvalue;
             else if(vname == "NO_DISCARD_LOCAL" ) NO_DISCARD_LOCAL = vvalue;
             else if(vname == "UPDATE_COMMITED_TIME_EACH_MILLISECONDS" ) UPDATE_COMMITED_TIME_EACH_MILLISECONDS = vvalue;
+			else if(vname == "TRANSACTION_THROUGHPUT_EACH_NODE") TRANSACTION_THROUGHPUT_EACH_NODE = vvalue;
+			else if(vname == "IDLE_START_TIME") IDLE_START_TIME = vvalue;
+			else if(vname == "AT") AT = vvalue;
+			else if(vname == "D") D = vvalue;
+			else if(vname == "AGING_MONITOR_EACH_MILLISECONDS") AGING_MONITOR_EACH_MILLISECONDS = vvalue;
+			else if(vname == "CLIENTS_PER_NODE") CLIENTS_PER_NODE = vvalue;
             
             
             

@@ -45,6 +45,7 @@ using namespace std;
 extern mt19937 rng;
 extern tcp_server *ser;
 extern boost::thread *mythread;
+extern uint32_t IDLE_START_TIME;
 
 
 uint32_t total_mined = 0;
@@ -191,9 +192,13 @@ uint32_t get_mine_time_in_milliseconds( )
 	return msec;
 }
 
+bool first_time = true;
 
 void miner( Blockchain *bc)
 {
+	if (first_time)
+		boost::this_thread::sleep(boost::posix_time::milliseconds(IDLE_START_TIME));
+	first_time = false;
 
 	if (! CAN_INTERRUPT)
 	    boost::this_thread::sleep(boost::posix_time::milliseconds(get_mine_time_in_milliseconds() ));
