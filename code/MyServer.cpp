@@ -761,15 +761,23 @@ bool tcp_server::add_ping( string tt, int dnext, bool overwrite )
 }
 
 string tcp_server::get_ip(string ip_or_hostname) {
+
   if (split(ip_or_hostname,".").size() == 1) {
-    //it's a hostname
-    tcp::resolver resolver((boost::asio::io_service &) acceptor_.get_executor().context());
-    tcp::resolver::query query(ip_or_hostname, "8080");
-    tcp::resolver::iterator iter = resolver.resolve(query);
-    tcp::endpoint endpoint = iter->endpoint();
-    string ip = endpoint.address().to_string();
-    //cout << "Converted " << ip_or_hostname << " to " << ip << endl;
-    return ip;
+    while (true) {
+      try {
+        //it's a hostname
+        //cout << "Converting " << ip_or_hostname << endl << flush;
+        tcp::resolver resolver((boost::asio::io_service &) acceptor_.get_executor().context());
+        tcp::resolver::query query(ip_or_hostname, "8080");
+        tcp::resolver::iterator iter = resolver.resolve(query);
+        tcp::endpoint endpoint = iter->endpoint();
+        string ip = endpoint.address().to_string();
+        //cout << "Converted " << ip_or_hostname << " to " << ip << endl << flush;
+        return ip;
+      } catch(...) {
+        boost::this_thread::sleep(boost::posix_time::milliseconds(2000));
+      }
+    }
   } else {
     return ip_or_hostname;
   }

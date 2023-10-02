@@ -249,7 +249,7 @@ int main(int argc, char **argv) {
      * Start the server
      */
     server.run_network();
-    time_of_start = (std::chrono::system_clock::now().time_since_epoch() + boost::posix_time::milliseconds(IDLE_START_TIME)) /  std::chrono::milliseconds(1);
+    time_of_start = (std::chrono::system_clock::now().time_since_epoch() + std::chrono::milliseconds(IDLE_START_TIME)) /  std::chrono::milliseconds(1);
     io_service.run();
 
 

@@ -26,7 +26,7 @@ SOFTWARE.
 bool BIZANTINE = false;
 uint32_t TRANSACTION_THROUGHPUT_EACH_NODE = 50; // tx/s in each note
 
-uint32_t IDLE_START_TIME = 30000;
+uint32_t IDLE_START_TIME = 120000;
 
 // Nimble aging thrershold
 int64_t AT = 960; // in milliseconds

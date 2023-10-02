@@ -1,0 +1,17 @@
+version: "3.0"
+services:
+  node1:
+    image: ohie
+    command: [ "echo", "hello" ]
+    deploy:
+      restart_policy:
+        condition: none
+      replicas: 1
+  node2:
+    image: ohie
+    command: [ "echo", "hello" ]
+    deploy:
+      restart_policy:
+        condition: none
+      replicas: 1
+
